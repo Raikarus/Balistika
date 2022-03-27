@@ -22,7 +22,20 @@ namespace _2Lab
             graph.InitializeContexts();
             AnT.InitializeContexts();
         }
+        private void PrintText2D(float x, float y, string text)
+        {
+            // устанавливаем позицию вывода растровых символов 
+            // в переданных координатах x и y. 
+            Gl.glRasterPos2f(x, y);
 
+            // в цикле foreach перебираем значения из массива text, 
+            // который содержит значение строки для визуализации 
+            foreach (char char_for_draw in text)
+            {
+                // символ C визуализируем с помощью функции glutBitmapCharacter, используя шрифт GLUT_BITMAP_9_BY_15. 
+                Glut.glutBitmapCharacter(Glut.GLUT_BITMAP_9_BY_15, char_for_draw);
+            }
+        }
         private void Form1_Load(object sender, EventArgs e)
         {
 
@@ -63,7 +76,7 @@ namespace _2Lab
 
             // установка объектно-видовой матрицы 
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
-
+            comboBox1.SelectedIndex = 0;
 
             // старт счетчика, отвечающего за вызов функции визуализации сцены 
             PointInGrap.Start();
@@ -93,7 +106,8 @@ namespace _2Lab
         // для визуализации текущего кадра 
         private int pointPosition = 0;
 
-        private double H, V0, g, angle, total_time;
+        private double H, V0, g, angle, total_time, mass;
+        private int selectedItem;
 
         private void timer1_Tick(object sender, EventArgs e)
         {
@@ -106,6 +120,9 @@ namespace _2Lab
 
             energy.MakeCurrent();
             DrawEnergy();
+
+            graph.MakeCurrent();
+            DrawGraph();
         }
 
         private void reBuild(object sender, EventArgs e)
@@ -121,9 +138,9 @@ namespace _2Lab
                 not_calculate = true;
                 elements_count = 0;
                 pointPosition = 0;
+                mass = Double.Parse(textBox1.Text);
                 DrawDiagram();
                 Draw();
-                textBox9.Text = $"{GrapValuesArray[elements_count-1,1]}";
             }
             catch(Exception er)
             {
@@ -157,7 +174,7 @@ namespace _2Lab
                 // если нет, то вызываем функцию вычисления координат графика 
                 functionCalculation();
             }
-
+            Gl.glPointSize(5);
             Gl.glBegin(Gl.GL_LINE_STRIP);
             Gl.glVertex2d(0, 0);
             Gl.glVertex2d(xMax*2, 0);
@@ -189,24 +206,23 @@ namespace _2Lab
             // активируем режим вывода точек (GL_POINTS) 
             Gl.glBegin(Gl.GL_POINTS);
             // выводим красную точку, используя ту ячейку массива, до которой мы дошли (вычисляется в функции обработчике событий таймера) 
-            if (pointPosition != elements_count - 1)
-                Gl.glVertex2d(GrapValuesArray[pointPosition, 0], GrapValuesArray[pointPosition, 1]);
-            else
-            {
-                Gl.glVertex2d(GrapValuesArray[pointPosition, 0], GrapValuesArray[pointPosition, 1]);
-                //Gl.glVertex2d(GrapValuesArray[pointPosition, 0], 0);
+            if (pointPosition >= elements_count - 1)
                 pointPosition = 0;
-            }
 
+            Gl.glVertex2d(GrapValuesArray[pointPosition, 0], GrapValuesArray[pointPosition, 1]);
             // завершаем режим рисования 
             Gl.glEnd();
             // устанавливаем размер точек равный единице
-            Gl.glPointSize(5);
+            
 
         }
 
         private int xMax,  yMax;
 
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            selectedItem = comboBox1.SelectedIndex+2;
+        }
 
         private Color[] colors = new Color[6];
 
@@ -266,47 +282,63 @@ namespace _2Lab
 
             // инициализация массива, который будет хранить значение 300 точек,  
             // из которых будет состоять график 
-            GrapValuesArray = new double[99999, 3];
+            GrapValuesArray = new double[99999, 6];
 
             // счетчик элементов массива 
             elements_count = 0;
             double diskr = Math.Sqrt(V0*Math.Sin(angle*Math.PI/180) * V0* Math.Sin(angle * Math.PI / 180) + 2 * g * H);
-            double t1 = (-V0* Math.Sin(angle * Math.PI / 180) + diskr) / (-g);
-            double t2 = (-V0* Math.Sin(angle * Math.PI / 180) - diskr) / (-g);
+            double t1 = (V0* Math.Sin(angle * Math.PI / 180) + diskr) / (g);
+            double t2 = (V0* Math.Sin(angle * Math.PI / 180) - diskr) / (g);
             total_time = (t1 > 0 && t2 > 0) ? Math.Min(t1, t2) : Math.Max(t1, t2);
             //total_time = ((((-V0 + Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H) > 0) && (((-V0 - Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H) > 0)) ? Math.Min((-V0 + Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H, (-V0 - Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H) : Math.Max((-V0 + Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H, (-V0 - Math.Sqrt(V0 * V0 - 2 * g * H)) / 2 / H);
             // вычисления всех значений y для x, принадлежащего промежутку от -15 до 15 с шагом в 0.01f 
-            for (double t = 0; t <= total_time; t += 0.05f)
+            y = H;
+            x = 2;
+            Vy = V0 * Math.Sin(angle / 180 * Math.PI);
+            // подсчет элементов 
+            GrapValuesArray[elements_count, 4] = 1;
+            GrapValuesArray[elements_count, 3] = mass*g*y;
+            GrapValuesArray[elements_count, 2] = V0 * V0 * Math.Cos(angle / 180 * Math.PI) * Math.Cos(angle / 180 * Math.PI) + Vy*Vy;
+            GrapValuesArray[elements_count, 1] = y;
+            GrapValuesArray[elements_count, 0] = x;
+            // подсчет элементов 
+            elements_count++;
+
+            for (double t = 0.05; t <= total_time+0.05; t += 0.05)
             {
                 // вычисление y для текущего x 
                 // по формуле y = (double)Math.Sin(x)*3 + 1; 
-                // эта строка задает формулу, описывающую график функции для нашего уравнения y = f(x). 
-                y = (double)(H + V0 * t * Math.Sin(angle/180*Math.PI) - g*t*t/2);
-                x = (double)(V0 * Math.Cos(angle / 180 * Math.PI)*t);
+                // эта строка задает формулу, описывающую график функции для нашего уравнения y = f(x).
+                y = H + V0 * t * Math.Sin(angle/180*Math.PI) - g*t*t/2;
+                x = V0 * Math.Cos(angle / 180 * Math.PI)*t;
                 Vy = V0 * Math.Sin(angle / 180 * Math.PI) - g*t;
-                
                 
                 //if (y < 0) break;
                 // запись координаты x 
                 GrapValuesArray[elements_count, 0] = x+2;
-                // запись координаты y 
-                if (t == total_time) y = 0;
+                // запись координаты y
+                if (t >= total_time) y = 0;
+                
                 GrapValuesArray[elements_count, 1] = y;
                 // подсчет элементов 
                 GrapValuesArray[elements_count, 2] = (double)(V0 * V0 * Math.Cos(angle / 180 * Math.PI) * Math.Cos(angle / 180 * Math.PI) + Vy*Vy);
+
+                GrapValuesArray[elements_count, 3] = mass*g*y;
+                GrapValuesArray[elements_count, 4] = mass*GrapValuesArray[pointPosition, 2]*GrapValuesArray[pointPosition, 2]/2;
+
 
                 elements_count++;
             }
             // изменяем флаг, сигнализировавший о том, что координаты графика не вычислены 
             not_calculate = false;
-
         }
 
         private void DrawEnergy()
         {
             // очистка буфера цвета и буфера глубины 
             Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
-           
+            Gl.glClearColor(255, 255, 255, 0);//выставление цвета основного
+            
             Gl.glViewport(0, 0, energy.Width, energy.Height);
             // активация проекционной матрицы 
             Gl.glMatrixMode(Gl.GL_PROJECTION);
@@ -326,13 +358,16 @@ namespace _2Lab
             Gl.glPushMatrix();
             //Gl.glRectd(0, 0, 1, 4);
 
-            double Ep = double.Parse(textBox1.Text)*g*GrapValuesArray[pointPosition,1];
+            double Ep = mass*g*GrapValuesArray[pointPosition,1];
             
-            double Ek = double.Parse(textBox1.Text) * GrapValuesArray[pointPosition,2] / 2;
-            textBox3.Text = $"{Ep} ; {GrapValuesArray[pointPosition, 1]}";
-            Gl.glColor3d(1, 0, 0);
+            double Ek = mass * GrapValuesArray[pointPosition,2]*GrapValuesArray[pointPosition, 2] / 2;
+            Gl.glColor3d(255/255, 165/255, 0);
             Gl.glRectd(0.05, 0, 0.15, 2*Ep/(Ep+Ek));
+            Gl.glColor3d(0, 127/255, 255/255);
             Gl.glRectd(0.25, 0, 0.35, 2*Ek/(Ep+Ek));
+            Gl.glColor3d(0, 0, 0);
+            PrintText2D(0.05f, 2, "Ep");
+            PrintText2D(0.25f, 2, "Ek");
             //Gl.glBegin(Gl.GL_QUADS);
             //Gl.glColor3d(1, 0, 0);
             //Gl.glVertex2d(0, 0);
@@ -347,6 +382,68 @@ namespace _2Lab
             Gl.glFlush();
 
             energy.Invalidate();
+        }
+
+        private void DrawGraph()
+        {
+            Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
+            Gl.glClearColor(255, 255, 255, 0);//выставление цвета основного
+
+            Gl.glViewport(0, 0, graph.Width, graph.Height);
+            // активация проекционной матрицы 
+            Gl.glMatrixMode(Gl.GL_PROJECTION);
+            // очистка матрицы 
+            Gl.glLoadIdentity();
+            ScreenW = (double)graph.Width / (double)graph.Height;
+            ScreenH = (double)graph.Height / (double)graph.Width;
+            Glu.gluOrtho2D(0.0, ScreenW, 0.0, ScreenH);
+            devX = (double)ScreenW / (double)graph.Width;
+            devY = (double)ScreenH / (double)graph.Height;
+
+            // помещаем состояние матрицы в стек матриц 
+            Gl.glPushMatrix();
+
+            Gl.glMatrixMode(Gl.GL_MODELVIEW);
+
+            Gl.glBegin(Gl.GL_LINE_STRIP);
+            Gl.glVertex2d(0, 0);
+            Gl.glVertex2d(xMax*2, 0);
+            Gl.glEnd();
+
+            // стартуем отрисовку в режиме визуализации точек 
+            // объединяемых в линии (GL_LINE_STRIP) 
+            Gl.glBegin(Gl.GL_POINTS);
+            Gl.glPointSize(5);
+            Gl.glColor3ub(colors[0].R, colors[0].G, colors[0].B);
+            // рисуем начальную точку 
+            // проходим по массиву с координатами вычисленных точек 
+            for (int ax = 1; ax < pointPosition; ax += 2)
+            {
+                // передаем в OpenGL информацию о вершине, участвующей в построении линий
+                Gl.glVertex2d((double)ax/20, GrapValuesArray[pointPosition,selectedItem]/100);//GrapValuesArray[ax, 0],GrapValuesArray[ax, selectedItem]/100);
+            }
+            // завершаем режим рисования 
+            Gl.glEnd();
+            // устанавливаем размер точек, равный 5 пикселям
+            Gl.glPointSize(15);
+            // устанавливаем текущим цветом - красный цвет 
+            Gl.glColor3ub(colors[3].R, colors[3].G, colors[3].B);
+            // активируем режим вывода точек (GL_POINTS) 
+            Gl.glBegin(Gl.GL_POINTS);
+            
+            // выводим красную точку, используя ту ячейку массива, до которой мы дошли (вычисляется в функции обработчике событий таймера) 
+            Gl.glVertex2d(GrapValuesArray[pointPosition, 0]/20,GrapValuesArray[pointPosition, selectedItem]/100);
+
+            // завершаем режим рисования 
+            Gl.glEnd();
+
+            Gl.glPopMatrix();
+
+
+            // дожидаемся завершения визуализации кадра 
+            Gl.glFlush();
+
+            graph.Invalidate();
         }
     }
 }
