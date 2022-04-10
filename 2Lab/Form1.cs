@@ -101,7 +101,7 @@ namespace _2Lab
 
         // флаг, означающий, что массив с значениями координат графика пока еще не заполнен 
         private bool not_calculate = true;
-
+        private double minV, maxV, minEk, maxEk, minEp, maxEp;
         // номер ячейки массива, из которой будут взяты координаты для красной точки 
         // для визуализации текущего кадра 
         private int pointPosition = 0;
@@ -123,14 +123,14 @@ namespace _2Lab
 
             graph.MakeCurrent();
             DrawGraph();
+
+            label8.Text = $"Time:{pointPosition*0.05}";
         }
 
         private void reBuild(object sender, EventArgs e)
         {
             try
             {
-                xMax = Int32.Parse(textBox2.Text);
-                yMax = Int32.Parse(textBox4.Text);
                 H = double.Parse(textBox5.Text);
                 g = double.Parse(textBox6.Text);
                 angle = double.Parse(textBox7.Text);
@@ -141,11 +141,29 @@ namespace _2Lab
                 mass = Double.Parse(textBox1.Text);
                 DrawDiagram();
                 Draw();
+                xMax = 10;// total_time;
+                if (selectedItem == 2)
+                    yMax = 10;//maxV;
+                else if (selectedItem == 3)
+                    yMax = 10;// maxEp;
+                else if (selectedItem == 4)
+                    yMax = 10;// maxEk;
             }
             catch(Exception er)
             {
                 MessageBox.Show(er.ToString());
             }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            graph.Visible = !graph.Visible;
+        }
+
+        private bool traektor = true;
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            traektor = !traektor;
         }
 
         private void DrawDiagram()
@@ -156,8 +174,8 @@ namespace _2Lab
             Gl.glMatrixMode(Gl.GL_PROJECTION);
             // очистка матрицы 
             Gl.glLoadIdentity();
-            ScreenW = (xMax+0.5) * (double)AnT.Width / (double)AnT.Height;
-            ScreenH = (yMax+0.5) * (double)AnT.Height / (double)AnT.Width;
+            ScreenW = (xMax + 0.5) * (double)AnT.Width / (double)AnT.Height;
+            ScreenH = (yMax + 0.5) * (double)AnT.Height / (double)AnT.Width;
             Glu.gluOrtho2D(0.0, ScreenW, 0.0, ScreenH);
             // сохранение коэффициентов, которые нам необходимы для перевода координат указателя в оконной системе в координаты, 
             // принятые в нашей OpenGL сцене 
@@ -177,7 +195,7 @@ namespace _2Lab
             Gl.glPointSize(5);
             Gl.glBegin(Gl.GL_LINE_STRIP);
             Gl.glVertex2d(0, 0);
-            Gl.glVertex2d(xMax*2, 0);
+            Gl.glVertex2d(xMax * 2, 0);
             Gl.glEnd();
 
             // стартуем отрисовку в режиме визуализации точек 
@@ -189,12 +207,15 @@ namespace _2Lab
             if (GrapValuesArray[0, 1] >= 0 && GrapValuesArray[0, 1] <= yMax)
                 Gl.glVertex2d(GrapValuesArray[0, 0], GrapValuesArray[0, 1]);
 
-            // проходим по массиву с координатами вычисленных точек 
-            for (int ax = 1; ax < pointPosition; ax += 2)
+            if (traektor)
             {
-                // передаем в OpenGL информацию о вершине, участвующей в построении линий
-                if(GrapValuesArray[ax, 1] >= 0 && GrapValuesArray[ax, 1] <= yMax)
-                    Gl.glVertex2d(GrapValuesArray[ax, 0], GrapValuesArray[ax, 1]);
+                // проходим по массиву с координатами вычисленных точек 
+                for (int ax = 1; ax < pointPosition; ax += 2)
+                {
+                    // передаем в OpenGL информацию о вершине, участвующей в построении линий
+                    if (GrapValuesArray[ax, 1] >= 0 && GrapValuesArray[ax, 1] <= yMax)
+                        Gl.glVertex2d(GrapValuesArray[ax, 0], GrapValuesArray[ax, 1]);
+                }
             }
 
             // завершаем режим рисования 
@@ -217,7 +238,7 @@ namespace _2Lab
 
         }
 
-        private int xMax,  yMax;
+        private double xMax,  yMax, maxX;
 
         private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -226,18 +247,6 @@ namespace _2Lab
 
         private Color[] colors = new Color[6];
 
-        private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            colorDialog1.ShowDialog();
-                 if (comboBox3.SelectedText == "График") colors[0] = colorDialog1.Color;
-            else if (comboBox3.SelectedText == "Оси") colors[1] = colorDialog1.Color;
-            else if (comboBox3.SelectedText == "Сетка точек") colors[2] = colorDialog1.Color;
-            else if (comboBox3.SelectedText == "Точка") colors[3] = colorDialog1.Color;
-            else if (comboBox3.SelectedText == "Линии курсора") colors[4] = colorDialog1.Color;
-            else if (comboBox3.SelectedText == "Подпись координат") colors[5] = colorDialog1.Color;
-            DrawDiagram();
-            Draw();
-        }
 
         private void Draw()
         {
@@ -252,7 +261,7 @@ namespace _2Lab
             Gl.glPushMatrix();
 
             // выполняем перемещение в пространстве по осям X и Y 
-          //  Gl.glTranslated(-xMin, -yMin, 0);
+            Gl.glTranslated(0, 0, 0);
 
 
 
@@ -279,7 +288,13 @@ namespace _2Lab
 
             // определение локальных переменных X и Y 
             double x = 0, y = 0;
-
+            minV = 0;
+            maxV = 0;
+            minEp = 0;
+            maxEp = 0;
+            minEk = 0;
+            maxEk = 0;
+            maxX = 0;
             // инициализация массива, который будет хранить значение 300 точек,  
             // из которых будет состоять график 
             GrapValuesArray = new double[99999, 6];
@@ -296,11 +311,23 @@ namespace _2Lab
             x = 2;
             Vy = V0 * Math.Sin(angle / 180 * Math.PI);
             // подсчет элементов 
-            GrapValuesArray[elements_count, 4] = 1;
+            
+            
             GrapValuesArray[elements_count, 3] = mass*g*y;
             GrapValuesArray[elements_count, 2] = V0 * V0 * Math.Cos(angle / 180 * Math.PI) * Math.Cos(angle / 180 * Math.PI) + Vy*Vy;
+            GrapValuesArray[elements_count, 4] = mass * GrapValuesArray[elements_count, 2] * GrapValuesArray[elements_count, 2] / 2;
             GrapValuesArray[elements_count, 1] = y;
             GrapValuesArray[elements_count, 0] = x;
+            minV = GrapValuesArray[elements_count, 2];
+            minEp = GrapValuesArray[elements_count, 3];
+            minEk = GrapValuesArray[elements_count, 4];
+            if (GrapValuesArray[elements_count, 0] > maxX) maxX = GrapValuesArray[elements_count, 0];
+            if (GrapValuesArray[elements_count, 2] < minV) minV = GrapValuesArray[elements_count, 2];
+            if (GrapValuesArray[elements_count, 2] > maxV) maxV = GrapValuesArray[elements_count, 2];
+            if (GrapValuesArray[elements_count, 3] < minEp) minEp = GrapValuesArray[elements_count, 3];
+            if (GrapValuesArray[elements_count, 3] > maxEp) maxEp = GrapValuesArray[elements_count, 3];
+            if (GrapValuesArray[elements_count, 4] < minEk) minEk = GrapValuesArray[elements_count, 4];
+            if (GrapValuesArray[elements_count, 4] > maxEk) maxEk = GrapValuesArray[elements_count, 4];
             // подсчет элементов 
             elements_count++;
 
@@ -321,10 +348,18 @@ namespace _2Lab
                 
                 GrapValuesArray[elements_count, 1] = y;
                 // подсчет элементов 
-                GrapValuesArray[elements_count, 2] = (double)(V0 * V0 * Math.Cos(angle / 180 * Math.PI) * Math.Cos(angle / 180 * Math.PI) + Vy*Vy);
+                GrapValuesArray[elements_count, 2] = V0 * V0 * Math.Cos(angle / 180 * Math.PI) * Math.Cos(angle / 180 * Math.PI) + Vy*Vy;
 
                 GrapValuesArray[elements_count, 3] = mass*g*y;
-                GrapValuesArray[elements_count, 4] = mass*GrapValuesArray[pointPosition, 2]*GrapValuesArray[pointPosition, 2]/2;
+                GrapValuesArray[elements_count, 4] = mass*GrapValuesArray[elements_count, 2]*GrapValuesArray[elements_count, 2]/2;
+
+                if (GrapValuesArray[elements_count, 0] > maxX) maxX = GrapValuesArray[elements_count, 0];
+                if (GrapValuesArray[elements_count, 2] < minV) minV = GrapValuesArray[elements_count, 2];
+                if (GrapValuesArray[elements_count, 2] > maxV) maxV = GrapValuesArray[elements_count, 2];
+                if (GrapValuesArray[elements_count, 3] < minEp) minEp = GrapValuesArray[elements_count, 3];
+                if (GrapValuesArray[elements_count, 3] > maxEp) maxEp = GrapValuesArray[elements_count, 3];
+                if (GrapValuesArray[elements_count, 4] < minEk) minEk = GrapValuesArray[elements_count, 4];
+                if (GrapValuesArray[elements_count, 4] > maxEk) maxEk = GrapValuesArray[elements_count, 4];
 
 
                 elements_count++;
@@ -337,7 +372,7 @@ namespace _2Lab
         {
             // очистка буфера цвета и буфера глубины 
             Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
-            Gl.glClearColor(255, 255, 255, 0);//выставление цвета основного
+            Gl.glClearColor(255, 255, 255, 0); //выставление цвета основного
             
             Gl.glViewport(0, 0, energy.Width, energy.Height);
             // активация проекционной матрицы 
@@ -354,26 +389,29 @@ namespace _2Lab
 
             
 
-            // помещаем состояние матрицы в стек матриц 
+            // помещаем состояние матрицы в стек матриц
             Gl.glPushMatrix();
             //Gl.glRectd(0, 0, 1, 4);
 
-            double Ep = mass*g*GrapValuesArray[pointPosition,1];
-            
-            double Ek = mass * GrapValuesArray[pointPosition,2]*GrapValuesArray[pointPosition, 2] / 2;
+            double Ep = GrapValuesArray[pointPosition,3];
+            double Ek = GrapValuesArray[pointPosition,4];
+
             Gl.glColor3d(255/255, 165/255, 0);
-            Gl.glRectd(0.05, 0, 0.15, 2*Ep/(Ep+Ek));
+            Gl.glRectd(0.05, 0, 0.15, Ep/maxEp);
             Gl.glColor3d(0, 127/255, 255/255);
-            Gl.glRectd(0.25, 0, 0.35, 2*Ek/(Ep+Ek));
+            Gl.glRectd(0.25, 0, 0.35, Ek/maxEk);
             Gl.glColor3d(0, 0, 0);
-            PrintText2D(0.05f, 2, "Ep");
-            PrintText2D(0.25f, 2, "Ek");
+            PrintText2D(0.05f, 2.15f, "Ep");
+            PrintText2D(0.05f, 2f, $"{(int)Ep}");
+            PrintText2D(0.25f, 2.15f, "Ek");
+            PrintText2D(0.25f, 2, $"{(int)Ek}");
             //Gl.glBegin(Gl.GL_QUADS);
             //Gl.glColor3d(1, 0, 0);
             //Gl.glVertex2d(0, 0);
             //Gl.glVertex2d(0, 1);
             //Gl.glVertex2d(1, 1);
             //Gl.glVertex2d(1, 0);
+
             // возвращаем матрицу из стека 
             Gl.glPopMatrix();
 
@@ -384,44 +422,91 @@ namespace _2Lab
             energy.Invalidate();
         }
 
-        private void DrawGraph()
+        private void DrawDiagram2()
         {
-            Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
-            Gl.glClearColor(255, 255, 255, 0);//выставление цвета основного
-
             Gl.glViewport(0, 0, graph.Width, graph.Height);
+
             // активация проекционной матрицы 
             Gl.glMatrixMode(Gl.GL_PROJECTION);
             // очистка матрицы 
             Gl.glLoadIdentity();
-            ScreenW = (double)graph.Width / (double)graph.Height;
-            ScreenH = (double)graph.Height / (double)graph.Width;
+
+            if (selectedItem == 2)
+             {
+                 ScreenW = (elements_count+4) * (double)graph.Width / (double)graph.Height;
+                 ScreenH = (maxV*1.3) * (double)graph.Height / (double)graph.Width;
+             }
+             else if(selectedItem == 3)
+             {
+                 ScreenW = (elements_count+4) * (double)graph.Width / (double)graph.Height;
+                 ScreenH = (maxEp*1.3) * (double)graph.Height / (double)graph.Width;
+             }
+             else
+             {
+                 ScreenW = (elements_count+4) * (double)graph.Width / (double)graph.Height;
+                 ScreenH = (maxEk*1.3)  * (double)graph.Height / (double)graph.Width;
+             }
+
             Glu.gluOrtho2D(0.0, ScreenW, 0.0, ScreenH);
-            devX = (double)ScreenW / (double)graph.Width;
-            devY = (double)ScreenH / (double)graph.Height;
-
-            // помещаем состояние матрицы в стек матриц 
-            Gl.glPushMatrix();
-
+            // сохранение коэффициентов, которые нам необходимы для перевода координат указателя в оконной системе в координаты, 
+            // принятые в нашей OpenGL сцене 
+            //if (ScreenW < graph.Width)
+            //    devX = (double)ScreenW / (double)graph.Width;
+           //else
+                devX = (double)graph.Width / (double)ScreenW;
+            //if (ScreenH > graph.Height)
+                devY =  (double)graph.Height / (double)ScreenH;
+            //else
+                devY =  (double)ScreenH / (double)graph.Height;
+            //devY = Double.Parse(textBox3.Text);
+            //devX = Double.Parse(textBox9.Text);
+            // установка объектно-видовой матрицы 
             Gl.glMatrixMode(Gl.GL_MODELVIEW);
-
+            Gl.glTranslated(1, 1,0);
+            Gl.glPointSize(5);
             Gl.glBegin(Gl.GL_LINE_STRIP);
             Gl.glVertex2d(0, 0);
-            Gl.glVertex2d(xMax*2, 0);
+            Gl.glVertex2d(elements_count, 0);
+            Gl.glVertex2d(elements_count, 0);
+            Gl.glVertex2d((elements_count-1), 5);
+            Gl.glEnd();
+            Gl.glBegin(Gl.GL_LINE_STRIP);
+            Gl.glVertex2d(0, 0);
+            if (selectedItem == 2)
+            {
+                Gl.glVertex2d(0, maxV);
+                Gl.glVertex2d(0, maxV);
+                Gl.glVertex2d(1,  (maxV - 0.02*maxV));
+            }
+            else if (selectedItem == 3)
+            {
+                Gl.glVertex2d(0, maxEp);
+                Gl.glVertex2d(0, maxEp);
+                Gl.glVertex2d(1, (maxEp - 0.02*maxEp));
+            }
+            else
+            {
+                Gl.glVertex2d(0,  maxEk);
+                Gl.glVertex2d(0,  maxEk);
+                Gl.glVertex2d(1, (maxEk - 0.02*maxEk));
+            }
             Gl.glEnd();
 
             // стартуем отрисовку в режиме визуализации точек 
             // объединяемых в линии (GL_LINE_STRIP) 
-            Gl.glBegin(Gl.GL_POINTS);
-            Gl.glPointSize(5);
+            Gl.glBegin(Gl.GL_LINE_STRIP);
+
             Gl.glColor3ub(colors[0].R, colors[0].G, colors[0].B);
             // рисуем начальную точку 
+                Gl.glVertex2d(0, GrapValuesArray[0, selectedItem]);
+
             // проходим по массиву с координатами вычисленных точек 
-            for (int ax = 1; ax < pointPosition; ax += 2)
+            for (int ax = 1; ax < elements_count; ax += 2)
             {
                 // передаем в OpenGL информацию о вершине, участвующей в построении линий
-                Gl.glVertex2d((double)ax/20, GrapValuesArray[pointPosition,selectedItem]/100);//GrapValuesArray[ax, 0],GrapValuesArray[ax, selectedItem]/100);
+                    Gl.glVertex2d(ax, GrapValuesArray[ax, selectedItem]);
             }
+            
             // завершаем режим рисования 
             Gl.glEnd();
             // устанавливаем размер точек, равный 5 пикселям
@@ -430,20 +515,41 @@ namespace _2Lab
             Gl.glColor3ub(colors[3].R, colors[3].G, colors[3].B);
             // активируем режим вывода точек (GL_POINTS) 
             Gl.glBegin(Gl.GL_POINTS);
-            
             // выводим красную точку, используя ту ячейку массива, до которой мы дошли (вычисляется в функции обработчике событий таймера) 
-            Gl.glVertex2d(GrapValuesArray[pointPosition, 0]/20,GrapValuesArray[pointPosition, selectedItem]/100);
 
+            Gl.glVertex2d(pointPosition, GrapValuesArray[pointPosition, selectedItem]);
             // завершаем режим рисования 
             Gl.glEnd();
+            // устанавливаем размер точек равный единице
 
+
+        }
+
+        private void DrawGraph()
+        {
+            // очистка буфера цвета и буфера глубины 
+            Gl.glClear(Gl.GL_COLOR_BUFFER_BIT | Gl.GL_DEPTH_BUFFER_BIT);
+            Gl.glClearColor(255,255,255,0);
+
+            // очищение текущей матрицы 
+            Gl.glLoadIdentity();
+
+            // помещаем состояние матрицы в стек матриц 
+            Gl.glPushMatrix();
+
+            // вызываем функцию рисования графика 
+            DrawDiagram2();
+
+            // возвращаем матрицу из стека 
             Gl.glPopMatrix();
 
 
             // дожидаемся завершения визуализации кадра 
             Gl.glFlush();
 
+            // сигнал для обновление элемента реализующего визуализацию. 
             graph.Invalidate();
+
         }
     }
 }
